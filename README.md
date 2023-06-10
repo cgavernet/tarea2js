@@ -3,6 +3,7 @@ Tarea 2 - Resolución de problema con JavaScript
 
 Descripcion de la tarea:
 ------------------------
+```
 En el archivo tarea2.js podemos encontrar un código de un supermercado que vende productos.
 El código contiene
     - una clase Producto que representa un producto que vende el super
@@ -26,3 +27,4 @@ Ejercicios
 ​
 3) Utilizar la función eliminarProducto utilizando .then() y .catch()
 
+```
