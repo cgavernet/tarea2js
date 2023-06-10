@@ -1,6 +1,6 @@
 /*
 En el archivo tarea2.js podemos encontrar un código de un supermercado que vende productos.
-El código contiene 
+El código contiene
     - una clase Producto que representa un producto que vende el super
     - una clase Carrito que representa el carrito de compras de un cliente
     - una clase ProductoEnCarrito que representa un producto que se agrego al carrito
@@ -9,19 +9,19 @@ El código tiene errores y varias cosas para mejorar / agregar
 ​
 Ejercicios
 1) Arreglar errores existentes en el código
-    a) Al ejecutar agregarProducto 2 veces con los mismos valores debería agregar 1 solo producto con la suma de las cantidades.    
-    b) Al ejecutar agregarProducto debería actualizar la lista de categorías solamente si la categoría no estaba en la lista.
-    c) Si intento agregar un producto que no existe debería mostrar un mensaje de error.
+  x a) Al ejecutar agregarProducto 2 veces con los mismos valores debería agregar 1 solo producto con la suma de las cantidades.
+  x b) Al ejecutar agregarProducto debería actualizar la lista de categorías solamente si la categoría no estaba en la lista.
+  x c) Si intento agregar un producto que no existe debería mostrar un mensaje de error.
 ​
 2) Agregar la función eliminarProducto a la clase Carrito
-    a) La función eliminarProducto recibe un sku y una cantidad (debe devolver una promesa)
-    b) Si la cantidad es menor a la cantidad de ese producto en el carrito, se debe restar esa cantidad al producto
-    c) Si la cantidad es mayor o igual a la cantidad de ese producto en el carrito, se debe eliminar el producto del carrito
-    d) Si el producto no existe en el carrito, se debe mostrar un mensaje de error
-    e) La función debe retornar una promesa
+  x a) La función eliminarProducto recibe un sku y una cantidad (debe devolver una promesa)
+  x b) Si la cantidad es menor a la cantidad de ese producto en el carrito, se debe restar esa cantidad al producto
+  x c) Si la cantidad es mayor o igual a la cantidad de ese producto en el carrito, se debe eliminar el producto del carrito
+  x d) Si el producto no existe en el carrito, se debe mostrar un mensaje de error
+  x e) La función debe retornar una promesa
 ​
 3) Utilizar la función eliminarProducto utilizando .then() y .catch()
-​
+​   :-(
 */
 
 
@@ -46,7 +46,6 @@ class Producto {
             this.stock = 10;
         }
     }
-
 }
 
 
@@ -82,19 +81,147 @@ class Carrito {
      */
     async agregarProducto(sku, cantidad) {
         console.log(`Agregando ${cantidad} ${sku}`);
-
-        // Busco el producto en la "base de datos"
-        const producto = await findProductBySku(sku);
-
-        console.log("Producto encontrado", producto);
-
-        // Creo un producto nuevo
-        const nuevoProducto = new ProductoEnCarrito(sku, producto.nombre, cantidad);
-        this.productos.push(nuevoProducto);
-        this.precioTotal = this.precioTotal + (producto.precio * cantidad);
-        this.categorias.push(producto.categoria);
+        try{
+            // Busco el producto en la "base de datos"
+            const producto = await this.findProductBySku(sku);
+            console.log(`Producto ${producto.nombre} encontrado con ${producto.stock} unidades`);
+            //Verifico si el styock es suficiente
+            if (cantidad <= producto.stock){ 
+                //Verifico si el producto ya fué cargado al carrito
+                const productoEnCarrito = this.productos.find(product => product.sku === sku);
+                if (productoEnCarrito) {
+                    //Actualizo el valor de la cantidad de unidades
+                    productoEnCarrito.cantidad += cantidad;
+                } else{
+                    // Creo un producto nuevo
+                    const nuevoProducto = new ProductoEnCarrito(sku, producto.nombre, cantidad);
+                    this.productos.push(nuevoProducto);
+                    // Compruebo si existe la categoria, sino la ingreso
+                    const existeCategoria = this.categorias.includes(producto.categoria);
+                    if (!existeCategoria) {this.categorias.push(producto.categoria);}
+                }
+                //Actualizo el importe total del carrito con el producto ingresado
+                this.precioTotal += producto.precio * cantidad;
+                //Actualizao el stock del producto
+                await this.restoStock(sku, cantidad);
+                console.log(`${cantidad} unidades de ${producto.nombre} se agregaron al carrito`);
+            }else{
+                console.log(`El producto ${producto.nombre} no tiene suficiente stock para agregarlo al carrito`);
+            }
+        }
+        catch (error) {
+            console.log(`El producto ${sku} no fué encontrado`);
+        }
     }
+
+    async eliminarProducto(sku, cantidad){
+        try{
+            return new Promise((resolve, reject) => {
+                //Obtengo el indice del producto dentro del array productos
+                const index = this.productos.findIndex(producto => producto.sku === sku)
+                 //Obtengo la cantidad del producto en el carrito
+                const productoEnCarrito = this.productos.find(producto => producto.sku === sku)
+                setTimeout( async () => {
+                    if(productoEnCarrito){
+                        if (cantidad < productoEnCarrito.cantidad){
+                            console.log("Resto los productos al carrito");
+                            resolve(productoEnCarrito.cantidad -= cantidad);
+                        } else {
+                            console.log("Se quitó el producto ", sku, "del carrito");
+                            resolve(this.productos.splice(index,1));
+                        }
+                        //llamo a la función que recalcula el precioTotal del carrito
+                        //recalcularPrecioTotalCarrito()
+                        //await this.actualizarStock(sku, cantidad, '+');
+                        await this.sumoStock(sku, cantidad);
+                        await this.recalcularPrecioTotalCarrito();
+                    }else{
+                        reject(`El producto ${sku} no existe en el carrito`)
+                    }
+                },2000);
+            })
+        }
+        catch(error){
+            console.log(`Se produjo el siguiente error ${error}`);
+        }
+    }
+
+    // Función que busca un producto por su sku en "la base de datos" 
+    findProductBySku(sku) {
+        return new Promise((resolve, reject) => {
+            console.log("Buscando producto");
+            setTimeout(() => {
+                const foundProduct = productosDelSuper.find(product => product.sku === sku);
+                if (foundProduct) {
+                    console.log("Producto encontrado");
+                    resolve(foundProduct);
+                } else {
+                    reject(`Product ${sku} not found`);
+                }
+            }, 1500);
+        });
+    }
+
+    // Funcion que agrega unidades al producto seleccionado
+    async sumoStock(sku, cantidad){
+        const producto = await this.findProductBySku(sku);
+        if (producto){
+            if (cantidad > 0){
+                console.log("Incremento stock");
+                console.log(`Stock Actual: ${producto.stock}`);
+                producto.stock += cantidad;
+                console.log(`Stock Final: ${producto.stock}`);
+            } else {
+                console.log("La cantidad ingresada no puede ser 0 o menor");
+            }
+        }else{
+            console.log(`Producto ${sku} no encontrado`)
+        }
+    }
+
+    // Funcion que quita unidades al producto seleccionado
+    async restoStock(sku, cantidad){
+        const producto = await this.findProductBySku(sku);
+        if (producto){
+            if (cantidad > 0){
+                console.log("Resto stock");
+                console.log(`Stock Actual: ${producto.stock}`);
+                producto.stock -= cantidad;
+                console.log(`Stock Final: ${producto.stock}`);
+            } else {
+                console.log("La cantidad ingresada no puede ser 0 o menor");
+            }
+        }else{
+            console.log(`Producto ${sku} no encontrado`)
+        }
+    }
+    
+    async recalcularPrecioTotalCarrito(){
+        let importeTotalproducto = 0
+        this.productos.forEach(async (productoenCarrito)=>{
+            const producto = await this.findProductBySku(productoenCarrito.sku);
+            importeTotalproducto += (productoenCarrito.cantidad * producto.precio);
+            //console.log(producto);
+            this.precioTotal = importeTotalproducto;    
+        }); 
+    }
+
+    async mostrarCarrito(){
+        console.log("Productos en el carrito:");
+        this.productos.forEach((producto, index)=>{
+            console.log(`${index}: ${producto.sku} - ${producto.cantidad} unidade/s de ${producto.nombre}`);
+        });
+        console.log("Categorias de los productos:");
+        this.categorias.forEach((categorias,index)=>{
+            console.log(`${index}: ${categorias}`);
+        })
+        console.log(`El importe total del carrito es de: $${this.precioTotal}`);
+    } 
+    
+    
 }
+
+
 
 // Cada producto que se agrega al carrito es creado con esta clase
 class ProductoEnCarrito {
@@ -110,19 +237,71 @@ class ProductoEnCarrito {
 
 }
 
-// Función que busca un producto por su sku en "la base de datos"
-function findProductBySku(sku) {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            const foundProduct = productosDelSuper.find(product => product.sku === sku);
-            if (foundProduct) {
-                resolve(foundProduct);
-            } else {
-                reject(`Product ${sku} not found`);
-            }
-        }, 1500);
-    });
-}
+// Función que busca un producto por su sku en "la base de datos" 
+// function findProductBySku(sku) {
+//     return new Promise((resolve, reject) => {
+//         setTimeout(() => {
+//             const foundProduct = productosDelSuper.find(product => product.sku === sku);
+//             if (foundProduct) {
+//                 resolve(foundProduct);
+//             } else {
+//                 reject(`Product ${sku} not found`);
+//             }
+//         }, 1500);
+//     });
+// }
 
-const carrito = new Carrito();
-carrito.agregarProducto('WE328NJ', 2);
+// Funcion que recalcula los importes en el carrito - OK
+// function recalcularPrecioTotalCarrito(){
+//     //Reseto precioTotal del carrito;
+//     carrito.precioTotal = 0;
+//     carrito.productos.forEach(async function(producto){
+//             //Busco el importe correspondiente al producto en la "Base de datos"
+//             const productoBySku = await findProductBySku(producto.sku);
+//             //Actualizo el importe total por producto
+//             carrito.precioTotal = carrito.precioTotal + (producto.cantidad * productoBySku.precio);
+//     });
+// }
+
+// function recalcularPrecioTotalCarrito(producto){
+//     //Reseto precioTotal del carrito;
+//     producto.precioTotal = 0;
+//     producto.productos.map(async function(producto){
+//             //Busco el importe correspondiente al producto en la "Base de datos"
+//             const productoBySku = await findProductBySku(producto.sku);
+//             //Actualizo el importe total por producto
+//             producto.precioTotal = producto.precioTotal + (producto.cantidad * productoBySku.precio);
+//     });
+// }
+//En prueba
+
+
+async function main(){
+    const carrito = new Carrito();
+    //Producto inexistente 
+    await carrito.agregarProducto('ROOM101', 2);
+    //Producto Existente 'KS944RUR', 'Queso', 10, 'lacteos', 4 ($30)
+    await carrito.agregarProducto('KS944RUR', 3);
+    //Producto Existente XX92LKI', 'Arroz', 7, 'alimentos', 20 ($14)
+    await carrito.agregarProducto('XX92LKI', 2);
+    //Producto con categoria existente 'UI999TY', 'Fideos', 5, 'alimentos' default stock 10 ($15)
+    await carrito.agregarProducto('UI999TY', 3);
+    // Producto sin stock suficiente 'RT324GD', 'Lavandina', 9, 'limpieza' default stock 10
+    await carrito.agregarProducto('RT324GD', 23);
+     //Producto Existente XX92LKI', 'Arroz', 7, 'alimentos', 20 ($7)
+    await carrito.agregarProducto('XX92LKI', 1);
+
+    // Una vez cargados los productos en el carrito, elimino uno utilizabdo .then() .catch()
+    await carrito.eliminarProducto('UI999TY', 3)
+    .then(() => {
+        console.log("El producto fué quitado correctamente")
+        //console.log(carrito);
+    }).catch((err) => {
+        console.log(err);
+    })
+
+    await carrito.mostrarCarrito();
+}
+main();
+//(async()=>{})();
+
