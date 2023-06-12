@@ -62,7 +62,6 @@ const jabon = new Producto('WE328NJ', 'Jabon', 4, 'higiene', 3);
 // Genero un listado de productos. Simulando base de datos
 const productosDelSuper = [queso, gaseosa, cerveza, arroz, fideos, lavandina, shampoo, jabon];
 
-
 // Cada cliente que venga a mi super va a crear un carrito
 class Carrito {
     productos;      // Lista de productos agregados
@@ -97,8 +96,9 @@ class Carrito {
                     const nuevoProducto = new ProductoEnCarrito(sku, producto.nombre, cantidad);
                     this.productos.push(nuevoProducto);
                     // Compruebo si existe la categoria, sino la ingreso
-                    const existeCategoria = this.categorias.includes(producto.categoria);
-                    if (!existeCategoria) {this.categorias.push(producto.categoria);}
+                    // const existeCategoria = this.categorias.includes(producto.categoria);
+                    // if (!existeCategoria) {this.categorias.push(producto.categoria);}
+                    this.agregarCategoria(producto.categoria);
                 }
                 //Actualizo el importe total del carrito con el producto ingresado
                 this.precioTotal += producto.precio * cantidad;
@@ -129,6 +129,8 @@ class Carrito {
                         } else {
                             console.log("Se quitó el producto ", sku, "del carrito");
                             resolve(this.productos.splice(index,1));
+                             //Reviso si debo quitar la categoria
+                             this.actualizarCategorias()
                         }
                         //llamo a la función que recalcula el precioTotal del carrito
                         //recalcularPrecioTotalCarrito()
@@ -149,11 +151,9 @@ class Carrito {
     // Función que busca un producto por su sku en "la base de datos" 
     findProductBySku(sku) {
         return new Promise((resolve, reject) => {
-            console.log("Buscando producto");
             setTimeout(() => {
                 const foundProduct = productosDelSuper.find(product => product.sku === sku);
                 if (foundProduct) {
-                    console.log("Producto encontrado");
                     resolve(foundProduct);
                 } else {
                     reject(`Product ${sku} not found`);
@@ -162,15 +162,15 @@ class Carrito {
         });
     }
 
-    // Funcion que agrega unidades al producto seleccionado
+    // Función que agrega unidades al producto seleccionado
     async sumoStock(sku, cantidad){
         const producto = await this.findProductBySku(sku);
         if (producto){
             if (cantidad > 0){
-                console.log("Incremento stock");
-                console.log(`Stock Actual: ${producto.stock}`);
+                //console.log("Incremento stock");
+                //console.log(`Stock Actual: ${producto.stock}`);
                 producto.stock += cantidad;
-                console.log(`Stock Final: ${producto.stock}`);
+                //console.log(`Stock Final: ${producto.stock}`);
             } else {
                 console.log("La cantidad ingresada no puede ser 0 o menor");
             }
@@ -184,10 +184,10 @@ class Carrito {
         const producto = await this.findProductBySku(sku);
         if (producto){
             if (cantidad > 0){
-                console.log("Resto stock");
-                console.log(`Stock Actual: ${producto.stock}`);
+                //console.log("Resto stock");
+                //console.log(`Stock Actual: ${producto.stock}`);
                 producto.stock -= cantidad;
-                console.log(`Stock Final: ${producto.stock}`);
+                //console.log(`Stock Final: ${producto.stock}`);
             } else {
                 console.log("La cantidad ingresada no puede ser 0 o menor");
             }
@@ -196,7 +196,7 @@ class Carrito {
         }
     }
     
-    async recalcularPrecioTotalCarrito(){
+    recalcularPrecioTotalCarrito(){
         let importeTotalproducto = 0
         this.productos.forEach(async (productoenCarrito)=>{
             const producto = await this.findProductBySku(productoenCarrito.sku);
@@ -206,7 +206,7 @@ class Carrito {
         }); 
     }
 
-    async mostrarCarrito(){
+    mostrarCarrito(){
         console.log("Productos en el carrito:");
         this.productos.forEach((producto, index)=>{
             console.log(`${index}: ${producto.sku} - ${producto.cantidad} unidade/s de ${producto.nombre}`);
@@ -217,7 +217,24 @@ class Carrito {
         })
         console.log(`El importe total del carrito es de: $${this.precioTotal}`);
     } 
+
+    agregarCategoria(categoria){
+        const existeCategoria = this.categorias.includes(categoria);
+        if (!existeCategoria) {this.categorias.push(categoria);}
+    }
     
+    actualizarCategorias(){
+        let cat=[];
+        this.categorias = [];
+        this.productos.map(function(producto) {
+            const pdelsuper = productosDelSuper.find(p=> p.sku === producto.sku);
+            //console.log(producto.nombre, pdelsuper.categoria);
+            if(!cat.includes(pdelsuper.categoria)){
+                cat.push(pdelsuper.categoria);
+            }
+        });
+        this.categorias = cat;
+    }
     
 }
 
@@ -237,45 +254,7 @@ class ProductoEnCarrito {
 
 }
 
-// Función que busca un producto por su sku en "la base de datos" 
-// function findProductBySku(sku) {
-//     return new Promise((resolve, reject) => {
-//         setTimeout(() => {
-//             const foundProduct = productosDelSuper.find(product => product.sku === sku);
-//             if (foundProduct) {
-//                 resolve(foundProduct);
-//             } else {
-//                 reject(`Product ${sku} not found`);
-//             }
-//         }, 1500);
-//     });
-// }
-
-// Funcion que recalcula los importes en el carrito - OK
-// function recalcularPrecioTotalCarrito(){
-//     //Reseto precioTotal del carrito;
-//     carrito.precioTotal = 0;
-//     carrito.productos.forEach(async function(producto){
-//             //Busco el importe correspondiente al producto en la "Base de datos"
-//             const productoBySku = await findProductBySku(producto.sku);
-//             //Actualizo el importe total por producto
-//             carrito.precioTotal = carrito.precioTotal + (producto.cantidad * productoBySku.precio);
-//     });
-// }
-
-// function recalcularPrecioTotalCarrito(producto){
-//     //Reseto precioTotal del carrito;
-//     producto.precioTotal = 0;
-//     producto.productos.map(async function(producto){
-//             //Busco el importe correspondiente al producto en la "Base de datos"
-//             const productoBySku = await findProductBySku(producto.sku);
-//             //Actualizo el importe total por producto
-//             producto.precioTotal = producto.precioTotal + (producto.cantidad * productoBySku.precio);
-//     });
-// }
-//En prueba
-
-
+// Funcion para simular la carga de productos
 async function main(){
     const carrito = new Carrito();
     //Producto inexistente 
@@ -291,16 +270,20 @@ async function main(){
      //Producto Existente XX92LKI', 'Arroz', 7, 'alimentos', 20 ($7)
     await carrito.agregarProducto('XX92LKI', 1);
 
-    // Una vez cargados los productos en el carrito, elimino uno utilizabdo .then() .catch()
-    await carrito.eliminarProducto('UI999TY', 3)
+    // Una vez cargados los productos en el carrito, elimino uno utilizando .then() .catch()
+    //await carrito.eliminarProducto('UI999TY', 3)
+    await carrito.eliminarProducto('KS944RUR', 3)
     .then(() => {
-        console.log("El producto fué quitado correctamente")
+        console.log("El producto fué quitado correctamente");
         //console.log(carrito);
     }).catch((err) => {
         console.log(err);
     })
-
-    await carrito.mostrarCarrito();
+    // Muestro el carrito luego de todas las operaciones
+    setTimeout(()=>{
+        carrito.mostrarCarrito();
+    },5000);
+    
 }
 main();
 //(async()=>{})();
